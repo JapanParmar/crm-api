@@ -18,7 +18,7 @@ class DashboardController extends Controller
     {
         $user = auth('api')->user();
 
-        if ($user->hasRole('admin')) {
+        if ($user->hasAnyRole(['admin', 'superadmin'])) {
             $stats        = $this->dashboard->adminStats();
             $todaySchedule = $this->dashboard->todaySchedule();
             $team         = $this->dashboard->teamPerformance();

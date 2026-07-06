@@ -19,6 +19,9 @@ class RolePermissionSeeder extends Seeder
         $allPermissions = [
             // User Management
             'manage-users',
+            
+            // RBAC Management
+            'manage-rbac',
 
             // Lead Management
             'view-all-leads',
@@ -48,10 +51,15 @@ class RolePermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => $perm, 'guard_name' => $guard]);
         }
 
+        // ── Super Admin Role ──────────────────────────────────────────────────
+        $superAdmin = Role::firstOrCreate(['name' => 'superadmin', 'guard_name' => $guard]);
+        $superAdmin->syncPermissions($allPermissions);
+
         // ── Admin Role ────────────────────────────────────────────────────────
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => $guard]);
         $admin->syncPermissions([
             'manage-users',
+            'manage-rbac',
             'view-all-leads',
             'create-leads',
             'update-leads',

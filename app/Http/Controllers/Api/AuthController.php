@@ -73,7 +73,8 @@ class AuthController extends Controller
     {
         $roles       = $user->getRoleNames()->toArray();
         $permissions = $user->getAllPermissions()->pluck('name')->toArray();
-        $isAdmin     = in_array('admin', $roles);
+        $isSuperAdmin = in_array('superadmin', $roles);
+        $isAdmin     = in_array('admin', $roles) || $isSuperAdmin;
 
         return [
             'id'          => $user->id,
@@ -96,6 +97,7 @@ class AuthController extends Controller
                 'users'             => $isAdmin || in_array('manage-users', $permissions),
                 'activity_log'      => in_array('view-activity-log', $permissions),
                 'settings'          => $isAdmin,
+                'rbac'              => $isAdmin || in_array('manage-rbac', $permissions),
             ],
         ];
     }

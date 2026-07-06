@@ -17,7 +17,15 @@ class AdminSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
-
         $admin->assignRole('admin');
+
+        $superadmin = User::firstOrCreate(
+            ['email' => 'superadmin@example.com'],
+            [
+                'name'     => 'Super Admin',
+                'password' => Hash::make('password'),
+            ]
+        );
+        $superadmin->assignRole('superadmin');
     }
 }

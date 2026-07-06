@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\FollowUpController;
 use App\Http\Controllers\Api\LeadController;
+use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\SiteVisitController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -52,10 +53,16 @@ Route::middleware('auth:api')->group(function () {
     // Activity Log
     Route::get('/activity', [ActivityLogController::class, 'index']);
 
-    // ── Admin-only ───────────────────────────────────────────────────────
-    Route::middleware('role:admin')->group(function () {
+    // ── Admin & Super Admin ──────────────────────────────────────────────
+    Route::middleware('role:admin|superadmin')->group(function () {
         // User management
         Route::get('/users/employees', [UserController::class, 'employees']);
         Route::apiResource('users', UserController::class)->except(['destroy']);
+
+        // RBAC Management
+        Route::get('/rbac/roles', [RolePermissionController::class, 'getRoles']);
+        Route::post('/rbac/roles', [RolePermissionController::class, 'createRole']);
+        Route::get('/rbac/permissions', [RolePermissionController::class, 'getPermissions']);
+        Route::patch('/rbac/roles/{role}/permissions', [RolePermissionController::class, 'syncPermissions']);
     });
 });
