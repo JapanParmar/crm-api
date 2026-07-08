@@ -16,8 +16,10 @@ class LeadResource extends JsonResource
             'phone'             => $this->phone,
             'alternate_phone'   => $this->alternate_phone,
             'email'             => $this->email,
+            'lead_date'         => $this->lead_date ? $this->lead_date->format('Y-m-d') : null,
 
             'source'            => $this->source,
+            'service_type'      => $this->service_type,
             'status'            => $this->status,
             'priority'          => $this->priority,
 
@@ -25,11 +27,15 @@ class LeadResource extends JsonResource
             'budget_min'        => $this->budget_min,
             'budget_max'        => $this->budget_max,
             'preferred_location'=> $this->preferred_location,
+            'city'              => $this->city,
+            'locality'          => $this->locality,
             'project_interest'  => $this->project_interest,
             'bhk_preference'    => $this->bhk_preference,
 
             'score'             => $this->score,
             'notes'             => $this->notes,
+            'listing_id'        => $this->listing_id,
+            'lead_provider_ref' => $this->lead_provider_ref,
             'tags'              => $this->tags ?? [],
 
             'assigned_to'       => $this->when(

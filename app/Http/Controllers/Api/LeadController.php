@@ -330,5 +330,89 @@ class LeadController extends Controller
             'message' => 'Leads assignment updated successfully.',
         ]);
     }
+
+    /**
+     * POST /api/leads/check-duplicates
+     * Batch check duplicate leads in the system.
+     */
+    public function checkDuplicates(Request $request): JsonResponse
+    {
+        $request->validate([
+            'leads' => 'required|array',
+            'leads.*.phone' => 'nullable|string',
+            'leads.*.email' => 'nullable|string',
+        ]);
+
+        $incoming = $request->input('leads', []);
+        $results = [];
+
+        // Collect all phones and emails to do efficient queries
+        $phones = [];
+        $emails = [];
+        foreach ($incoming as $item) {
+            if (!empty($item['phone'])) {
+                $phones[] = $item['phone'];
+            }
+            if (!empty($item['email'])) {
+                $emails[] = $item['email'];
+            }
+        }
+
+        // Query matching leads
+        $existingLeads = collect();
+        if (!empty($phones) || !empty($emails)) {
+            $query = Lead::query();
+            $query->where(function ($q) use ($phones, $emails) {
+                if (!empty($phones)) {
+                    $q->whereIn('phone', $phones)
+                      ->orWhereIn('alternate_phone', $phones);
+                }
+                if (!empty($emails)) {
+                    $q->orWhereIn('email', $emails);
+                }
+            });
+            $existingLeads = $query->get(['id', 'lead_number', 'name', 'phone', 'alternate_phone', 'email']);
+        }
+
+        // Match them back to the incoming check items
+        foreach ($incoming as $item) {
+            $phone = $item['phone'] ?? null;
+            $email = $item['email'] ?? null;
+            $matched = null;
+
+            foreach ($existingLeads as $lead) {
+                if ($phone && ($lead->phone === $phone || $lead->alternate_phone === $phone)) {
+                    $matched = $lead;
+                    break;
+                }
+                if ($email && trim($email) !== '' && strtolower($lead->email) === strtolower(trim($email))) {
+                    $matched = $lead;
+                    break;
+                }
+            }
+
+            if ($matched) {
+                $results[] = [
+                    'phone' => $phone,
+                    'email' => $email,
+                    'is_duplicate' => true,
+                    'lead_id' => $matched->id,
+                    'lead_number' => $matched->lead_number,
+                    'lead_name' => $matched->name,
+                ];
+            } else {
+                $results[] = [
+                    'phone' => $phone,
+                    'email' => $email,
+                    'is_duplicate' => false,
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $results,
+        ]);
+    }
 }
 

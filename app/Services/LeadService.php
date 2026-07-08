@@ -24,6 +24,30 @@ class LeadService
      */
     public function create(array $data, int $createdBy): Lead
     {
+        // Guard against duplicate lead creation from any backend path
+        $phone = $data['phone'] ?? null;
+        $alternatePhone = $data['alternate_phone'] ?? null;
+        $email = $data['email'] ?? null;
+
+        if ($phone || $alternatePhone || ($email && trim($email) !== '')) {
+            $duplicateQuery = Lead::query();
+            $duplicateQuery->where(function ($query) use ($phone, $alternatePhone, $email) {
+                if ($phone) {
+                    $query->orWhere('phone', $phone)->orWhere('alternate_phone', $phone);
+                }
+                if ($alternatePhone) {
+                    $query->orWhere('phone', $alternatePhone)->orWhere('alternate_phone', $alternatePhone);
+                }
+                if ($email && trim($email) !== '') {
+                    $query->orWhere('email', $email);
+                }
+            });
+            $existing = $duplicateQuery->first();
+            if ($existing) {
+                throw new \InvalidArgumentException("Duplicate lead detected: Phone/Email matches existing Lead {$existing->lead_number} ({$existing->name}).");
+            }
+        }
+
         $data['lead_number'] = $this->generateLeadNumber();
         $data['created_by']  = $createdBy;
         $data['status']      = $data['status'] ?? 'new';

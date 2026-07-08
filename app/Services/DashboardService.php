@@ -62,6 +62,62 @@ class DashboardService
         // Missed follow-ups
         $missedFollowUps = FollowUp::where('status', 'missed')->count();
 
+        // Leads by service type (new_project, resale, rental)
+        $leadsByServiceType = Lead::select('service_type', DB::raw('count(*) as count'))
+            ->whereNotNull('service_type')
+            ->groupBy('service_type')
+            ->pluck('count', 'service_type')
+            ->toArray();
+
+        // Leads by city (top 10)
+        $leadsByCity = Lead::select('city', DB::raw('count(*) as count'))
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->groupBy('city')
+            ->orderByDesc('count')
+            ->limit(10)
+            ->pluck('count', 'city')
+            ->toArray();
+
+        // Monthly lead trend (last 6 months)
+        $monthlyTrend = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $monthKey = $month->format('Y-m');
+            $monthLabel = $month->format('M');
+            $leads = Lead::whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->count();
+            $won = Lead::whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->where('status', 'closed_won')
+                ->count();
+            $monthlyTrend[] = [
+                'month' => $monthLabel,
+                'key' => $monthKey,
+                'leads' => $leads,
+                'closed_won' => $won,
+            ];
+        }
+
+        // Leads by property type
+        $leadsByPropertyType = Lead::select('property_type', DB::raw('count(*) as count'))
+            ->whereNotNull('property_type')
+            ->where('property_type', '!=', '')
+            ->groupBy('property_type')
+            ->orderByDesc('count')
+            ->pluck('count', 'property_type')
+            ->toArray();
+
+        // Leads by BHK preference
+        $leadsByBhk = Lead::select('bhk_preference', DB::raw('count(*) as count'))
+            ->whereNotNull('bhk_preference')
+            ->where('bhk_preference', '!=', '')
+            ->groupBy('bhk_preference')
+            ->orderByDesc('count')
+            ->pluck('count', 'bhk_preference')
+            ->toArray();
+
         return [
             'total_leads'          => $totalLeads,
             'assigned_leads'       => $assignedLeads,
@@ -81,6 +137,11 @@ class DashboardService
             'cold_leads'           => $coldLeads,
             'leads_by_source'      => $leadsBySource,
             'leads_by_status'      => $leadsByStatus,
+            'leads_by_service_type' => $leadsByServiceType,
+            'leads_by_city'        => $leadsByCity,
+            'leads_by_property_type' => $leadsByPropertyType,
+            'leads_by_bhk'         => $leadsByBhk,
+            'monthly_trend'        => $monthlyTrend,
         ];
     }
 

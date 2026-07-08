@@ -18,17 +18,23 @@ class Lead extends Model
         'phone',
         'alternate_phone',
         'email',
+        'lead_date',
         'source',
+        'service_type',
         'status',
         'priority',
         'property_type',
         'budget_min',
         'budget_max',
         'preferred_location',
+        'city',
+        'locality',
         'project_interest',
         'bhk_preference',
         'score',
         'notes',
+        'listing_id',
+        'lead_provider_ref',
         'tags',
         'assigned_to',
         'assigned_at',
@@ -49,6 +55,7 @@ class Lead extends Model
         'budget_max'       => 'integer',
         'follow_up_count'  => 'integer',
         'site_visit_count' => 'integer',
+        'lead_date'        => 'date',
         'assigned_at'      => 'datetime',
         'last_contacted_at'=> 'datetime',
         'next_follow_up_at'=> 'datetime',
@@ -67,6 +74,8 @@ class Lead extends Model
     ];
 
     public const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+
+    public const SERVICE_TYPES = ['new_project', 'resale', 'rental'];
 
     public const PROPERTY_TYPES = [
         'apartment', 'villa', 'plot', 'commercial',
