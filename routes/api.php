@@ -34,6 +34,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/leads/counts', [LeadController::class, 'counts']);
     Route::patch('/leads/bulk-assign', [LeadController::class, 'bulkAssign']);
     Route::post('/leads/check-duplicates', [LeadController::class, 'checkDuplicates']);
+    Route::delete('/leads/bulk-delete', [LeadController::class, 'bulkDelete']);
     Route::get('/leads/{lead}/follow-ups', [LeadController::class, 'followUps']);
     Route::get('/leads/{lead}/site-visits', [LeadController::class, 'siteVisits']);
     Route::get('/leads/{lead}/activity', [LeadController::class, 'activity']);

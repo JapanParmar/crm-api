@@ -185,7 +185,7 @@ class LeadController extends Controller
     /**
      * DELETE /api/leads/{lead}
      */
-    public function destroy(Lead $lead): JsonResponse
+    public function destroy(Request $request, Lead $lead): JsonResponse
     {
         $user = auth('api')->user();
         if (!$user->can('delete-leads') || (!$user->can('view-all-leads') && $lead->assigned_to != $user->id)) {
@@ -195,11 +195,94 @@ class LeadController extends Controller
             ], 403);
         }
 
+        $permanent = filter_var($request->query('permanent') ?? $request->input('permanent') ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if ($permanent) {
+            if (!$user->hasRole('superadmin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden. Only superadmins can permanently delete leads.'
+                ], 403);
+            }
+            $lead->forceDelete();
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead permanently deleted.',
+            ]);
+        }
+
         $lead->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Lead deleted.',
+        ]);
+    }
+
+    /**
+     * DELETE /api/leads/bulk-delete
+     */
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (!$user->can('delete-leads')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden. You do not have permission to delete leads.'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'lead_ids'   => ['required', 'array'],
+            'lead_ids.*' => ['integer'],
+            'permanent'  => ['nullable', 'boolean'],
+        ]);
+
+        $leadIds   = $validated['lead_ids'];
+        $permanent = filter_var($validated['permanent'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if ($permanent && !$user->hasRole('superadmin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden. Only superadmins can permanently delete leads.'
+            ], 403);
+        }
+
+        $query = Lead::withTrashed()->whereIn('id', $leadIds);
+
+        if ($user->hasRole('employee')) {
+            $query->where('assigned_to', $user->id);
+        }
+
+        $leads = $query->get();
+
+        if ($leads->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No leads found to delete.'
+            ], 404);
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($leads, $permanent, $user) {
+            foreach ($leads as $lead) {
+                if ($permanent) {
+                    $lead->forceDelete();
+                } else {
+                    $lead->delete();
+
+                    \App\Models\ActivityLog::create([
+                        'lead_id'      => $lead->id,
+                        'performed_by' => $user->id,
+                        'type'         => 'deleted',
+                        'description'  => 'Lead deleted (soft delete) via bulk action.',
+                    ]);
+                }
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => $permanent ? 'Leads permanently deleted from database.' : 'Leads deleted successfully.',
         ]);
     }
 
