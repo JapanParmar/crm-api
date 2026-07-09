@@ -24,6 +24,7 @@ Route::middleware('auth:api')->group(function () {
 
     // Auth
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me/preferences', [AuthController::class, 'updatePreferences']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Dashboard (role-aware response)

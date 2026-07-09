@@ -53,6 +53,28 @@ class AuthController extends Controller
     }
 
     /**
+     * Update authenticated user's layout/styling preferences.
+     */
+    public function updatePreferences(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $user = auth('api')->user();
+
+        $validated = $request->validate([
+            'preferences' => 'required|array',
+        ]);
+
+        $user->update([
+            'preferences' => $validated['preferences'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Preferences updated successfully.',
+            'data'    => $user->preferences,
+        ]);
+    }
+
+    /**
      * Invalidate token.
      */
     public function logout(): JsonResponse
@@ -82,6 +104,7 @@ class AuthController extends Controller
             'email'       => $user->email,
             'phone'       => $user->phone,
             'is_active'   => $user->is_active,
+            'preferences' => $user->preferences,
             'roles'       => $roles,
             'permissions' => $permissions,
             // Navigation access flags — frontend uses this to render sidebar/menus
