@@ -145,7 +145,7 @@ class LeadController extends Controller
     public function show(Lead $lead): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('view-all-leads') && $lead->assigned_to !== $user->id) {
+        if (!$user->can('view-all-leads') && $lead->assigned_to != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have access to this lead.'
@@ -166,7 +166,7 @@ class LeadController extends Controller
     public function update(UpdateLeadRequest $request, Lead $lead): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('view-all-leads') && $lead->assigned_to !== $user->id) {
+        if (!$user->can('view-all-leads') && $lead->assigned_to != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have access to this lead.'
@@ -188,7 +188,7 @@ class LeadController extends Controller
     public function destroy(Lead $lead): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('delete-leads') || (!$user->can('view-all-leads') && $lead->assigned_to !== $user->id)) {
+        if (!$user->can('delete-leads') || (!$user->can('view-all-leads') && $lead->assigned_to != $user->id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have permission to delete this lead.'
@@ -209,7 +209,7 @@ class LeadController extends Controller
     public function followUps(Lead $lead): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('view-all-leads') && $lead->assigned_to !== $user->id) {
+        if (!$user->can('view-all-leads') && $lead->assigned_to != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have access to this lead.'
@@ -233,7 +233,7 @@ class LeadController extends Controller
     public function siteVisits(Lead $lead): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('view-all-leads') && $lead->assigned_to !== $user->id) {
+        if (!$user->can('view-all-leads') && $lead->assigned_to != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have access to this lead.'
@@ -257,7 +257,7 @@ class LeadController extends Controller
     public function activity(Lead $lead): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('view-all-leads') && $lead->assigned_to !== $user->id) {
+        if (!$user->can('view-all-leads') && $lead->assigned_to != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have access to this lead.'

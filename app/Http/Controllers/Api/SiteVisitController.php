@@ -88,7 +88,7 @@ class SiteVisitController extends Controller
     public function store(StoreSiteVisitRequest $request, Lead $lead): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('view-all-leads') && $lead->assigned_to !== $user->id) {
+        if (!$user->can('view-all-leads') && $lead->assigned_to != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have access to this lead.'
@@ -110,7 +110,7 @@ class SiteVisitController extends Controller
     public function complete(Request $request, SiteVisit $siteVisit): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('view-all-leads') && $siteVisit->attended_by !== $user->id) {
+        if (!$user->can('view-all-leads') && $siteVisit->attended_by != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have access to this site visit.'

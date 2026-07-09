@@ -97,7 +97,7 @@ class FollowUpController extends Controller
     public function store(StoreFollowUpRequest $request, Lead $lead): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('view-all-leads') && $lead->assigned_to !== $user->id) {
+        if (!$user->can('view-all-leads') && $lead->assigned_to != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have access to this lead.'
@@ -119,7 +119,7 @@ class FollowUpController extends Controller
     public function complete(Request $request, FollowUp $followUp): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('view-all-leads') && $followUp->assigned_to !== $user->id) {
+        if (!$user->can('view-all-leads') && $followUp->assigned_to != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have access to this follow-up.'
@@ -146,7 +146,7 @@ class FollowUpController extends Controller
     public function miss(FollowUp $followUp): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user->can('view-all-leads') && $followUp->assigned_to !== $user->id) {
+        if (!$user->can('view-all-leads') && $followUp->assigned_to != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden. You do not have access to this follow-up.'
