@@ -70,8 +70,55 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Preferences updated successfully.',
-            'data'    => $user->preferences,
+            'data' => $user->preferences,
         ]);
+    }
+
+    /**
+     * POST /api/me/profile-image
+     */
+    public function updateProfileImage(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+        ]);
+
+        $user = auth('api')->user();
+
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $path = $file->store('avatars', 'public');
+            $url = asset('storage/' . $path);
+
+            if ($user->profile_image) {
+                $storagePrefix = asset('storage/');
+                if (str_starts_with($user->profile_image, $storagePrefix)) {
+                    $relativePath = str_replace($storagePrefix . '/', '', $user->profile_image);
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($relativePath);
+                }
+            }
+
+            $user->profile_image = $url;
+            $user->save();
+
+            $employee = \App\Models\Employee::where('user_id', $user->id)->first();
+            if ($employee) {
+                $employee->profile_image = $url;
+                $employee->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile image updated successfully.',
+                'url' => $url,
+                'data' => $this->buildUserPayload($user),
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No image file provided.',
+        ], 400);
     }
 
     /**
@@ -99,13 +146,14 @@ class AuthController extends Controller
         $isAdmin     = in_array('admin', $roles) || $isSuperAdmin;
 
         return [
-            'id'          => $user->id,
-            'name'        => $user->name,
-            'email'       => $user->email,
-            'phone'       => $user->phone,
-            'is_active'   => $user->is_active,
-            'preferences' => $user->preferences,
-            'roles'       => $roles,
+            'id'            => $user->id,
+            'name'          => $user->name,
+            'email'         => $user->email,
+            'phone'         => $user->phone,
+            'is_active'     => $user->is_active,
+            'profile_image' => $user->profile_image,
+            'preferences'   => $user->preferences,
+            'roles'         => $roles,
             'permissions' => $permissions,
             // Navigation access flags — frontend uses this to render sidebar/menus
             'access'      => [
@@ -119,8 +167,10 @@ class AuthController extends Controller
                 'site_visits'       => true, // everyone
                 'users'             => $isAdmin || in_array('manage-users', $permissions),
                 'activity_log'      => in_array('view-activity-log', $permissions),
-                'settings'          => $isAdmin,
+                'settings'          => true,
                 'rbac'              => $isAdmin || in_array('manage-rbac', $permissions),
+                'projects'          => true, // everyone can access projects
+                'hr'                => true, // everyone can access personal HR center
             ],
         ];
     }

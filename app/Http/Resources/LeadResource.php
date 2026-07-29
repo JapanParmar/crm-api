@@ -24,6 +24,7 @@ class LeadResource extends JsonResource
             'priority'          => $this->priority,
 
             'property_type'     => $this->property_type,
+            'project_id'        => $this->project_id,
             'budget_min'        => $this->budget_min,
             'budget_max'        => $this->budget_max,
             'preferred_location'=> $this->preferred_location,
@@ -37,6 +38,22 @@ class LeadResource extends JsonResource
             'listing_id'        => $this->listing_id,
             'lead_provider_ref' => $this->lead_provider_ref,
             'tags'              => $this->tags ?? [],
+
+            'project'           => $this->when(
+                $this->relationLoaded('project'),
+                fn() => $this->project ? [
+                    'id'              => $this->project->id,
+                    'name'            => $this->project->name,
+                    'code'            => $this->project->code,
+                    'type'            => $this->project->type,
+                    'status'          => $this->project->status,
+                    'city'            => $this->project->city,
+                    'developer'       => $this->project->developer,
+                    'price_min'       => $this->project->price_min,
+                    'price_max'       => $this->project->price_max,
+                    'available_units' => $this->project->available_units,
+                ] : null
+            ),
 
             'assigned_to'       => $this->when(
                 $this->relationLoaded('assignedTo'),

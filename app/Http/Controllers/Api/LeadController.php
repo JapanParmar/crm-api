@@ -27,7 +27,7 @@ class LeadController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user  = auth('api')->user();
-        $query = Lead::with('assignedTo:id,name,email');
+        $query = Lead::with(['assignedTo:id,name,email', 'project']);
 
         // Role scope
         if ($user->hasRole('employee')) {
@@ -152,7 +152,7 @@ class LeadController extends Controller
             ], 403);
         }
 
-        $lead->load('assignedTo:id,name,email', 'createdBy:id,name');
+        $lead->load('assignedTo:id,name,email', 'createdBy:id,name', 'project');
 
         return response()->json([
             'success' => true,

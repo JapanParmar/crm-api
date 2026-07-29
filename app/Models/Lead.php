@@ -23,6 +23,7 @@ class Lead extends Model
         'service_type',
         'status',
         'priority',
+        'project_id',
         'property_type',
         'budget_min',
         'budget_max',
@@ -92,6 +93,11 @@ class Lead extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     public function followUps(): HasMany
