@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class, // 1. Roles & permissions first
             AdminSeeder::class,          // 2. Admin user
             CrmDataSeeder::class,        // 3. Employees + all CRM data
+            InventoryDataSeeder::class,  // 4. Project configurations, towers, units, bookings, payments
         ]);
     }
 }
