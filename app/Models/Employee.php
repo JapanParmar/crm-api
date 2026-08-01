@@ -34,11 +34,19 @@ class Employee extends Model
         'ifsc_code',
         'notes',
         'profile_image',
+        'work_latitude',
+        'work_longitude',
+        'hra',
+        'allowances',
+        'deductions',
     ];
 
     protected $casts = [
         'salary'       => 'float',
         'joining_date' => 'date',
+        'hra'          => 'float',
+        'allowances'   => 'float',
+        'deductions'   => 'float',
     ];
 
     public const DEPARTMENTS = [

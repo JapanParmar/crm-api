@@ -391,8 +391,10 @@ class LeadController extends Controller
                 $lead = Lead::find($id);
                 if ($lead) {
                     $lead->update([
-                        'assigned_to' => $assignedTo,
-                        'assigned_at' => $assignedTo ? now() : null,
+                        'assigned_to'       => $assignedTo,
+                        'assigned_at'       => $assignedTo ? now() : null,
+                        'assignment_status' => $assignedTo ? 'pending' : null,
+                        'sla_expires_at'    => $assignedTo ? now()->addMinutes(15) : null,
                     ]);
 
                     \App\Models\ActivityLog::create([
@@ -402,7 +404,10 @@ class LeadController extends Controller
                         'description'  => $assignedTo 
                             ? "Lead assigned to {$assigneeName} via bulk action." 
                             : "Lead unassigned via bulk action.",
-                        'metadata'     => ['assigned_to' => $assignedTo],
+                        'metadata'     => [
+                            'assigned_to' => $assignedTo,
+                            'sla_expires_at' => $assignedTo ? $lead->sla_expires_at->toIso8601String() : null
+                        ],
                     ]);
                 }
             }
@@ -495,6 +500,88 @@ class LeadController extends Controller
         return response()->json([
             'success' => true,
             'data' => $results,
+        ]);
+    }
+
+    /**
+     * Accept a pending lead assignment.
+     */
+    public function accept(Lead $lead): \Illuminate\Http\JsonResponse
+    {
+        $userId = auth('api')->id();
+
+        if ($lead->assigned_to !== $userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not assigned to this lead.',
+            ], 403);
+        }
+
+        if ($lead->assignment_status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => "Lead assignment cannot be accepted because its status is: {$lead->assignment_status}.",
+            ], 400);
+        }
+
+        $lead->update([
+            'assignment_status' => 'accepted',
+            'accepted_at' => now(),
+        ]);
+
+        \App\Models\ActivityLog::create([
+            'lead_id'      => $lead->id,
+            'performed_by' => $userId,
+            'type'         => 'accepted',
+            'description'  => "Lead assignment accepted by " . auth('api')->user()->name,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lead assignment accepted successfully.',
+            'lead'    => $lead,
+        ]);
+    }
+
+    /**
+     * Reject a pending lead assignment, triggering auto-reassignment.
+     */
+    public function reject(Lead $lead, \App\Services\LeadAssignmentService $assignmentService): \Illuminate\Http\JsonResponse
+    {
+        $userId = auth('api')->id();
+
+        if ($lead->assigned_to !== $userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not assigned to this lead.',
+            ], 403);
+        }
+
+        if ($lead->assignment_status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => "Lead assignment cannot be rejected because its status is: {$lead->assignment_status}.",
+            ], 400);
+        }
+
+        $lead->update([
+            'assignment_status' => 'rejected',
+        ]);
+
+        \App\Models\ActivityLog::create([
+            'lead_id'      => $lead->id,
+            'performed_by' => $userId,
+            'type'         => 'rejected',
+            'description'  => "Lead assignment rejected by " . auth('api')->user()->name,
+        ]);
+
+        // Reassign the lead immediately
+        $newAgent = $assignmentService->reassignOnSlaExpiry($lead);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lead assignment rejected and reassigned successfully.',
+            'reassigned_to' => $newAgent ? $newAgent->name : null,
         ]);
     }
 }

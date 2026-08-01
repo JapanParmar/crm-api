@@ -20,6 +20,8 @@ class Attendance extends Model
         'status',
         'notes',
         'ip_address',
+        'latitude',
+        'longitude',
     ];
 
     protected $casts = [

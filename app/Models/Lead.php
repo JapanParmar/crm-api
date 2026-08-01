@@ -39,6 +39,10 @@ class Lead extends Model
         'tags',
         'assigned_to',
         'assigned_at',
+        'assignment_status',
+        'accepted_at',
+        'sla_expires_at',
+        'reassigned_from',
         'last_contacted_at',
         'next_follow_up_at',
         'follow_up_count',
@@ -49,17 +53,19 @@ class Lead extends Model
     ];
 
     protected $casts = [
-        'tags'             => 'array',
-        'is_duplicate'     => 'boolean',
-        'score'            => 'integer',
-        'budget_min'       => 'integer',
-        'budget_max'       => 'integer',
-        'follow_up_count'  => 'integer',
-        'site_visit_count' => 'integer',
-        'lead_date'        => 'date',
-        'assigned_at'      => 'datetime',
-        'last_contacted_at'=> 'datetime',
-        'next_follow_up_at'=> 'datetime',
+        'tags'              => 'array',
+        'is_duplicate'      => 'boolean',
+        'score'             => 'integer',
+        'budget_min'        => 'integer',
+        'budget_max'        => 'integer',
+        'follow_up_count'   => 'integer',
+        'site_visit_count'  => 'integer',
+        'lead_date'         => 'date',
+        'assigned_at'       => 'datetime',
+        'accepted_at'       => 'datetime',
+        'sla_expires_at'    => 'datetime',
+        'last_contacted_at' => 'datetime',
+        'next_follow_up_at' => 'datetime',
     ];
 
     // Valid enum values — easy to extend without migrations

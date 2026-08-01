@@ -8,7 +8,10 @@ use Illuminate\Support\Str;
 
 class LeadService
 {
-    public function __construct(private ActivityLogService $activityLog) {}
+    public function __construct(
+        private ActivityLogService $activityLog,
+        private LeadAssignmentService $assignmentService
+    ) {}
 
     /**
      * Generate a unique sequential lead number: LID-1001, LID-1002, ...
@@ -63,6 +66,12 @@ class LeadService
             "Lead {$lead->lead_number} created.",
             ['source' => $lead->source]
         );
+
+        // Auto-assign lead if no assigned_to is manually supplied
+        if (empty($lead->assigned_to)) {
+            $this->assignmentService->autoAssign($lead);
+            $lead->refresh();
+        }
 
         return $lead->load('assignedTo', 'createdBy');
     }

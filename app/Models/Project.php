@@ -19,7 +19,9 @@ class Project extends Model
         'status',
         'location',
         'city',
+        'state',
         'developer',
+        'rera_number',
         'budget',
         'total_units',
         'available_units',
@@ -33,19 +35,25 @@ class Project extends Model
         'images',
         'manager_id',
         'created_by',
+        'google_map_url',
+        'landmark',
+        'pincode',
+        'construction_stage',
+        'construction_pct',
     ];
 
     protected $casts = [
-        'amenities'       => 'array',
-        'images'          => 'array',
-        'budget'          => 'float',
-        'price_min'       => 'float',
-        'price_max'       => 'float',
-        'total_units'     => 'integer',
-        'available_units' => 'integer',
-        'sold_units'      => 'integer',
-        'launch_date'     => 'date',
-        'possession_date' => 'date',
+        'amenities'        => 'array',
+        'images'           => 'array',
+        'budget'           => 'float',
+        'price_min'        => 'float',
+        'price_max'        => 'float',
+        'total_units'      => 'integer',
+        'available_units'  => 'integer',
+        'sold_units'       => 'integer',
+        'construction_pct' => 'integer',
+        'launch_date'      => 'date',
+        'possession_date'  => 'date',
     ];
 
     public const TYPES = [
@@ -54,6 +62,10 @@ class Project extends Model
 
     public const STATUSES = [
         'planning', 'active', 'under_construction', 'completed', 'on_hold',
+    ];
+
+    public const CONSTRUCTION_STAGES = [
+        'planning', 'foundation', 'structure', 'finishing', 'completed',
     ];
 
     public function manager(): BelongsTo
@@ -74,5 +86,15 @@ class Project extends Model
     public function siteVisits(): HasMany
     {
         return $this->hasMany(SiteVisit::class);
+    }
+
+    public function towers(): HasMany
+    {
+        return $this->hasMany(Tower::class);
+    }
+
+    public function configurations(): HasMany
+    {
+        return $this->hasMany(ProjectConfiguration::class);
     }
 }

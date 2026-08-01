@@ -64,6 +64,27 @@ class HrmController extends Controller
         ]);
     }
 
+    /**
+     * Calculate distance between two coordinate points using the Haversine formula (in meters)
+     */
+    private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earthRadius = 6371000; // in meters
+
+        $latFrom = deg2rad($lat1);
+        $lonFrom = deg2rad($lon1);
+        $latTo = deg2rad($lat2);
+        $lonTo = deg2rad($lon2);
+
+        $latDelta = $latTo - $latFrom;
+        $lonDelta = $lonTo - $lonFrom;
+
+        $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) +
+            cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)));
+
+        return $angle * $earthRadius;
+    }
+
     public function clockIn(Request $request): JsonResponse
     {
         $employee = $this->resolveEmployee($request);
@@ -75,6 +96,29 @@ class HrmController extends Controller
         $now = Carbon::now();
         $timeStr = $now->format('H:i:s');
 
+        // GPS Geofence Check
+        $latitude = $request->input('latitude');
+        $longitude = $request->input('longitude');
+
+        $targetLat = $employee->work_latitude ?? 23.0225; // default Ahmedabad Office
+        $targetLon = $employee->work_longitude ?? 72.5714;
+        $allowedRadius = 500; // 500 meters geofence
+
+        if ($latitude !== null && $longitude !== null) {
+            $distance = $this->calculateDistance((float)$latitude, (float)$longitude, (float)$targetLat, (float)$targetLon);
+            if ($distance > $allowedRadius) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Clock-in failed: You are outside the authorized work boundary. Distance: ' . round($distance) . 'm. Allowed radius: ' . $allowedRadius . 'm.'
+                ], 400);
+            }
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Clock-in failed: GPS coordinates are required to verify your location.'
+            ], 400);
+        }
+
         $attendance = Attendance::firstOrCreate(
             ['employee_id' => $employee->id, 'date' => $today],
             [
@@ -82,6 +126,8 @@ class HrmController extends Controller
                 'clock_in' => $timeStr,
                 'status' => $now->hour >= 10 ? 'late' : 'present',
                 'ip_address' => $request->ip(),
+                'latitude' => $latitude,
+                'longitude' => $longitude,
                 'notes' => $request->notes,
             ]
         );
@@ -90,6 +136,8 @@ class HrmController extends Controller
             $attendance->update([
                 'clock_in' => $timeStr,
                 'status' => $now->hour >= 10 ? 'late' : 'present',
+                'latitude' => $latitude,
+                'longitude' => $longitude,
             ]);
         }
 
@@ -333,9 +381,9 @@ class HrmController extends Controller
 
         foreach ($employees as $emp) {
             $baseSalary = $emp->salary ?? 50000;
-            $hra = round($baseSalary * 0.20, 2);
-            $allowances = round($baseSalary * 0.10, 2);
-            $deductions = round($baseSalary * 0.05, 2);
+            $hra = $emp->hra !== null ? (float)$emp->hra : round($baseSalary * 0.20, 2);
+            $allowances = $emp->allowances !== null ? (float)$emp->allowances : round($baseSalary * 0.10, 2);
+            $deductions = $emp->deductions !== null ? (float)$emp->deductions : round($baseSalary * 0.05, 2);
             $netSalary = $baseSalary + $hra + $allowances - $deductions;
 
             Payroll::updateOrCreate(

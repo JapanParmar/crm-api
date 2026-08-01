@@ -113,6 +113,11 @@ class EmployeeController extends Controller
             'account_number'          => 'nullable|string|max:50',
             'ifsc_code'               => 'nullable|string|max:20',
             'notes'                   => 'nullable|string',
+            'work_latitude'           => 'nullable|numeric|between:-90,90',
+            'work_longitude'          => 'nullable|numeric|between:-180,180',
+            'hra'                     => 'nullable|numeric|min:0',
+            'allowances'              => 'nullable|numeric|min:0',
+            'deductions'              => 'nullable|numeric|min:0',
         ]);
 
         $employee = Employee::create($validated);
@@ -165,6 +170,11 @@ class EmployeeController extends Controller
             'account_number'          => 'nullable|string|max:50',
             'ifsc_code'               => 'nullable|string|max:20',
             'notes'                   => 'nullable|string',
+            'work_latitude'           => 'nullable|numeric|between:-90,90',
+            'work_longitude'          => 'nullable|numeric|between:-180,180',
+            'hra'                     => 'nullable|numeric|min:0',
+            'allowances'              => 'nullable|numeric|min:0',
+            'deductions'              => 'nullable|numeric|min:0',
         ]);
 
         $employee->update($validated);
