@@ -39,6 +39,22 @@ class Employee extends Model
         'hra',
         'allowances',
         'deductions',
+        
+        // New columns from Excel
+        'sr_no',
+        'dob',
+        'gender',
+        'personal_phone',
+        'office_phone',
+        'personal_email',
+        'office_email',
+        'manager',
+        'device_assigned',
+        'laptop_model',
+        'laptop_serial_number',
+        'mobile_model',
+        'mobile_serial_number',
+        'location',
     ];
 
     protected $casts = [

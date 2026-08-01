@@ -25,6 +25,23 @@ return new class extends Migration
             $table->string('status')->default('active'); // active, on_leave, suspended, terminated
             $table->date('joining_date');
             $table->decimal('salary', 12, 2)->nullable();
+            
+            // New requested fields from Excel
+            $table->string('sr_no')->nullable();
+            $table->string('dob')->nullable();
+            $table->string('gender')->nullable();
+            $table->string('personal_phone')->nullable();
+            $table->string('office_phone')->nullable();
+            $table->string('personal_email')->nullable();
+            $table->string('office_email')->nullable();
+            $table->string('manager')->nullable();
+            $table->string('device_assigned')->nullable();
+            $table->string('laptop_model')->nullable();
+            $table->string('laptop_serial_number')->nullable();
+            $table->string('mobile_model')->nullable();
+            $table->string('mobile_serial_number')->nullable();
+            $table->string('location')->nullable();
+
             $table->string('pan_number')->nullable();
             $table->string('aadhar_number')->nullable();
             $table->string('emergency_contact_name')->nullable();

@@ -40,6 +40,18 @@ class Project extends Model
         'pincode',
         'construction_stage',
         'construction_pct',
+        
+        // New columns from Excel
+        'sr_no',
+        'project_type',
+        'project_status',
+        'passession',
+        'price',
+        'size_sqft',
+        'contact_person',
+        'contact_number',
+        'brochure_link',
+        'remarks',
     ];
 
     protected $casts = [

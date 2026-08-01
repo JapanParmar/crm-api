@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Hash;
 
 class CrmDataSeeder extends Seeder
 {
-    // ── Realistic Indian real-estate data pools ────────────────────────────
     private array $names = [
         'Rahul Sharma', 'Priya Patel', 'Amit Kumar', 'Sunita Verma', 'Vikash Singh',
         'Anjali Gupta', 'Rohit Mehta', 'Deepa Nair', 'Suresh Reddy', 'Kavita Joshi',
@@ -22,19 +21,6 @@ class CrmDataSeeder extends Seeder
         'Neha Chauhan', 'Rajesh Pandey', 'Meera Pillai', 'Vikas Khanna', 'Anita Dubey',
         'Sachin Kulkarni', 'Shreya Das', 'Kiran Rao', 'Arun Iyer', 'Swati Jain',
         'Nitin Bose', 'Divya Menon', 'Harish Chandra', 'Lalitha Ramesh', 'Sushil Thakur',
-    ];
-
-    private array $projects = [
-        'Prestige Skyline', 'Brigade Utopia', 'Sobha Dream Acres', 'DLF Camellias',
-        'Godrej Reserve', 'Purva Atmosphere', 'Mantri Espana', 'Total Environment',
-        'Embassy Springs', 'RMZ Galleria', 'Salarpuria Sattva', 'Adarsh Palm Retreat',
-    ];
-
-    private array $locations = [
-        'Whitefield, Bangalore', 'HSR Layout, Bangalore', 'Koramangala, Bangalore',
-        'Electronic City, Bangalore', 'Sarjapur Road, Bangalore', 'Hebbal, Bangalore',
-        'Yelahanka, Bangalore', 'Bannerghatta Road, Bangalore', 'Devanahalli, Bangalore',
-        'Marathahalli, Bangalore', 'Bellandur, Bangalore', 'JP Nagar, Bangalore',
     ];
 
     private array $sources = [
@@ -92,6 +78,9 @@ class CrmDataSeeder extends Seeder
 
     private function pick(array $arr): mixed
     {
+        if (empty($arr)) {
+            return null;
+        }
         return $arr[(int) ($this->rand() * count($arr))];
     }
 
@@ -102,35 +91,254 @@ class CrmDataSeeder extends Seeder
 
     public function run(): void
     {
-        // ── Create Employees ───────────────────────────────────────────────
-        $employeeData = [
-            ['name' => 'Arjun Rathore',  'email' => 'arjun.rathore@propcrm.in',  'phone' => '9876543210'],
-            ['name' => 'Sneha Kapoor',   'email' => 'sneha.kapoor@propcrm.in',   'phone' => '9123456789'],
-            ['name' => 'Dev Malhotra',   'email' => 'dev.malhotra@propcrm.in',   'phone' => '9345678901'],
-            ['name' => 'Priti Saxena',   'email' => 'priti.saxena@propcrm.in',   'phone' => '9234567890'],
-            ['name' => 'Ravi Shankar',   'email' => 'ravi.shankar@propcrm.in',   'phone' => '9456789012', 'is_active' => false],
-        ];
+        $admin = User::where('email', 'admin@example.com')->first();
 
+        // ── 1. Seed Employees & Users from Excel data ───────────────────────
+        $employeesFilePath = database_path('seeders/data/employees.json');
+        if (!file_exists($employeesFilePath)) {
+            $this->command->error('Employees data file not found: ' . $employeesFilePath);
+            return;
+        }
+
+        $employeesJson = json_decode(file_get_contents($employeesFilePath), true);
         $employees = [];
-        foreach ($employeeData as $data) {
-            $emp = User::firstOrCreate(
-                ['email' => $data['email']],
+        $usedEmails = [];
+        $usedCodes = [];
+
+        foreach ($employeesJson as $data) {
+            $fullName = trim($data['Employee Name'] ?? '');
+            if (empty($fullName)) {
+                continue;
+            }
+
+            // Split name into first and last name
+            $nameParts = explode(' ', $fullName, 2);
+            $firstName = $nameParts[0];
+            $lastName = $nameParts[1] ?? '';
+
+            // Clean email
+            $email = trim($data['O. Email'] ?? '');
+            if (empty($email)) {
+                $email = trim($data['P. Email'] ?? '');
+            }
+            if (empty($email)) {
+                $email = strtolower(str_replace(' ', '.', $fullName)) . '@brickroots.com';
+            }
+
+            // Clean phone
+            $phone = trim($data['O. Mobile Number'] ?? '');
+            if (empty($phone)) {
+                $phone = trim($data['P. Mobile Number'] ?? '');
+            }
+            $phone = preg_replace('/[^0-9]/', '', $phone);
+            if (empty($phone)) {
+                $phone = '9' . $this->randInt(100000000, 999999999);
+            }
+
+            $isActive = (trim($data['Status'] ?? '') === 'Working');
+
+            // Handle duplicate emails in source data
+            $baseEmail = $email;
+            $counter = 1;
+            while (in_array(strtolower($email), $usedEmails)) {
+                $emailParts = explode('@', $baseEmail);
+                $email = $emailParts[0] . '+' . $counter . '@' . ($emailParts[1] ?? 'brickroots.com');
+                $counter++;
+            }
+            $usedEmails[] = strtolower($email);
+
+            // Handle duplicate employee codes in source data
+            $employeeCode = trim($data['Employee ID'] ?? '');
+            if (empty($employeeCode)) {
+                $employeeCode = 'EMP-' . $this->randInt(1000, 9999);
+            }
+            $baseCode = $employeeCode;
+            $codeCounter = 1;
+            while (in_array(strtolower($employeeCode), $usedCodes)) {
+                $employeeCode = $baseCode . '-' . $codeCounter;
+                $codeCounter++;
+            }
+            $usedCodes[] = strtolower($employeeCode);
+
+            // Create or update corresponding User
+            $user = User::updateOrCreate(
+                ['email' => $email],
                 [
-                    'name'      => $data['name'],
+                    'name'      => $fullName,
                     'password'  => Hash::make('password'),
-                    'phone'     => $data['phone'],
-                    'is_active' => $data['is_active'] ?? true,
+                    'phone'     => $phone,
+                    'is_active' => $isActive,
                 ]
             );
-            $emp->syncRoles(['employee']);
-            $employees[] = $emp;
+            $user->syncRoles(['employee']);
+            $employees[] = $user;
+
+            // Normalize and Map Department
+            $dept = trim($data['Department'] ?? 'Sales');
+            $deptLower = strtolower($dept);
+            if (str_contains($deptLower, 'sale')) {
+                $dept = 'Sales';
+            } elseif (str_contains($deptLower, 'market')) {
+                $dept = 'Marketing';
+            } elseif (str_contains($deptLower, 'hr') || str_contains($deptLower, 'human')) {
+                $dept = 'HR';
+            } elseif (str_contains($deptLower, 'it') || str_contains($deptLower, 'tech')) {
+                $dept = 'IT';
+            } elseif (str_contains($deptLower, 'financ') || str_contains($deptLower, 'account')) {
+                $dept = 'Finance';
+            } elseif (str_contains($deptLower, 'operation') || str_contains($deptLower, 'admin')) {
+                $dept = 'Operations';
+            } elseif (str_contains($deptLower, 'construct') || str_contains($deptLower, 'architect')) {
+                $dept = 'Construction';
+            } elseif (str_contains($deptLower, 'legal')) {
+                $dept = 'Legal';
+            } else {
+                $dept = 'Sales';
+            }
+
+            // Map status
+            $status = $isActive ? 'active' : 'terminated';
+
+            // Clean joining date
+            $joiningDate = $data['Joining date'] ?? null;
+            if ($joiningDate) {
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $joiningDate)) {
+                    $joiningDate = now()->toDateString();
+                }
+            } else {
+                $joiningDate = now()->toDateString();
+            }
+
+            // Create or update Employee
+            Employee::updateOrCreate(
+                ['employee_code' => $employeeCode],
+                [
+                    'user_id' => $user->id,
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'email' => $email,
+                    'phone' => $phone,
+                    'department' => $dept,
+                    'designation' => trim($data['Designation'] ?? 'Sales Executive'),
+                    'employment_type' => 'full_time',
+                    'status' => $status,
+                    'joining_date' => $joiningDate,
+                    'salary' => $this->randInt(25000, 150000),
+                    'notes' => trim($data['Remarks'] ?? ''),
+
+                    // Excel Columns
+                    'sr_no' => trim($data['Sr. No.'] ?? ''),
+                    'dob' => trim($data['DOB'] ?? ''),
+                    'gender' => trim($data['Gender'] ?? ''),
+                    'personal_phone' => trim($data['P. Mobile Number'] ?? ''),
+                    'office_phone' => trim($data['O. Mobile Number'] ?? ''),
+                    'personal_email' => trim($data['P. Email'] ?? ''),
+                    'office_email' => trim($data['O. Email'] ?? ''),
+                    'manager' => trim($data['Manager'] ?? ''),
+                    'device_assigned' => trim($data['Device Assigned'] ?? ''),
+                    'laptop_model' => trim($data['Laptop Model'] ?? ''),
+                    'laptop_serial_number' => trim($data['Laptop Serial Number'] ?? ''),
+                    'mobile_model' => trim($data['Mobile Model'] ?? ''),
+                    'mobile_serial_number' => trim($data['Mobile Serial Number'] ?? ''),
+                    'location' => trim($data['Location'] ?? ''),
+                ]
+            );
         }
 
         $activeEmployees = array_filter($employees, fn($e) => $e->is_active);
         $activeEmployees = array_values($activeEmployees);
-        $admin           = User::where('email', 'admin@example.com')->first();
+        if (empty($activeEmployees)) {
+            $activeEmployees = $employees;
+        }
 
-        // ── Seed Leads ─────────────────────────────────────────────────────
+        // ── 2. Seed Projects from Excel data ───────────────────────────────
+        $projectsFilePath = database_path('seeders/data/projects.json');
+        if (!file_exists($projectsFilePath)) {
+            $this->command->error('Projects data file not found: ' . $projectsFilePath);
+            return;
+        }
+
+        $projectsJson = json_decode(file_get_contents($projectsFilePath), true);
+        $seededProjectNames = [];
+
+        foreach ($projectsJson as $pData) {
+            $name = trim($pData['Project Name'] ?? '');
+            $code = trim($pData['Project ID'] ?? '');
+            if (empty($name) || empty($code)) {
+                continue;
+            }
+
+            // Deduplicate projects by name to prevent multiple configuration entries as separate projects
+            if (in_array(strtolower($name), $seededProjectNames)) {
+                continue;
+            }
+            $seededProjectNames[] = strtolower($name);
+
+            // Map Excel Status -> model type: residential, commercial, mixed_use
+            $statusStr = strtolower(trim($pData['Project Status'] ?? ''));
+            $type = 'residential';
+            if (str_contains($statusStr, 'commercial')) {
+                $type = 'commercial';
+            } elseif (str_contains($statusStr, 'both') || str_contains($statusStr, 'mixed') || str_contains($statusStr, 'luxury')) {
+                $type = 'mixed_use';
+            }
+
+            // Map Possession string -> model status: planning, active, under_construction, completed, on_hold
+            $possessionStr = strtolower(trim($pData['Passession'] ?? ''));
+            $status = 'active';
+            if (str_contains($possessionStr, 'ready') || str_contains($possessionStr, 'move') || str_contains($possessionStr, 'completed') || str_contains($possessionStr, 'sold out')) {
+                $status = 'completed';
+            } elseif (str_contains($possessionStr, 'dec') || str_contains($possessionStr, '202') || str_contains($possessionStr, 'launch') || str_contains($possessionStr, 'possesion')) {
+                $status = 'under_construction';
+            }
+
+            Project::updateOrCreate(
+                ['code' => $code],
+                [
+                    'name' => $name,
+                    'type' => $type,
+                    'status' => $status,
+                    'location' => trim($pData['Location'] ?? ''),
+                    'city' => trim($pData['City'] ?? 'Ahmedabad'),
+                    'state' => trim($pData['State'] ?? 'Gujarat'),
+                    'developer' => 'Brickroots Network',
+                    'rera_number' => trim($pData['RERA Number'] ?? ''),
+                    'budget' => 0.0,
+                    'total_units' => 100,
+                    'available_units' => 50,
+                    'sold_units' => 50,
+                    'price_min' => 0.0,
+                    'price_max' => 0.0,
+                    'description' => trim($pData['Remarks'] ?? ''),
+                    'google_map_url' => trim($pData['Google Map Link'] ?? ''),
+                    'created_by' => $admin?->id,
+
+                    // Excel Columns
+                    'sr_no' => trim($pData['Sr. No.'] ?? ''),
+                    'project_type' => trim($pData['Project Type'] ?? ''),
+                    'project_status' => trim($pData['Project Status'] ?? ''),
+                    'passession' => trim($pData['Passession'] ?? ''),
+                    'price' => trim($pData['Price'] ?? ''),
+                    'size_sqft' => trim($pData['Size Sq. ft.'] ?? ''),
+                    'contact_person' => trim($pData['Contact person'] ?? ''),
+                    'contact_number' => trim($pData['Contact Number'] ?? ''),
+                    'brochure_link' => trim($pData['Brochure Link'] ?? ''),
+                    'remarks' => trim($pData['Remarks'] ?? ''),
+                ]
+            );
+        }
+
+        // Fetch dynamic lists for lead creation
+        $dbProjects = Project::all();
+        if ($dbProjects->isEmpty()) {
+            $this->command->error('No projects seeded.');
+            return;
+        }
+
+        $dbProjectNames = $dbProjects->pluck('name')->toArray();
+        $dbProjectLocations = $dbProjects->pluck('location')->toArray();
+
+        // ── 3. Seed Leads ──────────────────────────────────────────────────
         $leads = [];
         for ($i = 0; $i < 120; $i++) {
             $name     = $this->pick($this->names);
@@ -154,8 +362,8 @@ class CrmDataSeeder extends Seeder
                 'property_type'     => $this->pick($this->propertyTypes),
                 'budget_min'        => $budgetPair[0],
                 'budget_max'        => $budgetPair[1],
-                'preferred_location'=> $this->pick($this->locations),
-                'project_interest'  => $this->pick($this->projects),
+                'preferred_location'=> $this->pick($dbProjectLocations),
+                'project_interest'  => $this->pick($dbProjectNames),
                 'bhk_preference'    => $this->pick(['1BHK', '2BHK', '3BHK', '4BHK', 'Villa']),
                 'score'             => $this->randInt(10, 95),
                 'assigned_to'       => $this->rand() > 0.1 ? $emp->id : null,
@@ -167,7 +375,6 @@ class CrmDataSeeder extends Seeder
                 'updated_at'        => $createdAt->addDays($this->randInt(0, 5)),
             ]);
 
-            // Activity log: lead_created
             ActivityLog::create([
                 'lead_id'      => $lead->id,
                 'performed_by' => $admin?->id,
@@ -180,8 +387,7 @@ class CrmDataSeeder extends Seeder
             $leads[] = $lead;
         }
 
-        // ── Seed Follow-ups ───────────────────────────────────────────────
-        $followUpStatuses = ['scheduled', 'completed', 'missed', 'cancelled'];
+        // ── 4. Seed Follow-ups ─────────────────────────────────────────────
         foreach ($leads as $lead) {
             $count = $this->randInt(0, 5);
             $leadFollowUpCount = 0;
@@ -213,7 +419,6 @@ class CrmDataSeeder extends Seeder
 
                 $leadFollowUpCount++;
 
-                // Activity log for follow-up
                 ActivityLog::create([
                     'lead_id'      => $lead->id,
                     'performed_by' => $lead->assigned_to,
@@ -231,7 +436,7 @@ class CrmDataSeeder extends Seeder
             }
         }
 
-        // ── Seed Site Visits ───────────────────────────────────────────────
+        // ── 5. Seed Site Visits ────────────────────────────────────────────
         $visitsLeads = array_filter($leads, fn($l) => in_array($l->status, ['site_visit', 'negotiation', 'closed_won', 'closed_lost']));
         foreach ($visitsLeads as $lead) {
             $count = $this->randInt(1, 2);
@@ -248,8 +453,8 @@ class CrmDataSeeder extends Seeder
                 $visit = SiteVisit::create([
                     'lead_id'      => $lead->id,
                     'attended_by'  => $lead->assigned_to ?? $emp->id,
-                    'project_name' => $lead->project_interest ?? $this->pick($this->projects),
-                    'location'     => $lead->preferred_location ?? $this->pick($this->locations),
+                    'project_name' => $lead->project_interest ?? $this->pick($dbProjectNames),
+                    'location'     => $lead->preferred_location ?? $this->pick($dbProjectLocations),
                     'status'       => $vstStatus,
                     'scheduled_at' => $visitDate,
                     'completed_at' => $vstStatus === 'completed' ? $visitDate->addHours(2) : null,
@@ -279,218 +484,9 @@ class CrmDataSeeder extends Seeder
             }
         }
 
-        // ── Seed Projects ──────────────────────────────────────────────────
-        $projectSeeds = [
-            [
-                'name' => 'Prestige Skyline',
-                'code' => 'PRJ-SKYL',
-                'type' => 'residential',
-                'status' => 'active',
-                'location' => 'Whitefield',
-                'city' => 'Bangalore',
-                'developer' => 'Prestige Group',
-                'budget' => 450000000.00,
-                'total_units' => 250,
-                'available_units' => 45,
-                'sold_units' => 205,
-                'price_min' => 7500000.00,
-                'price_max' => 15000000.00,
-                'launch_date' => '2024-01-15',
-                'possession_date' => '2026-12-31',
-                'description' => 'Luxury 2 & 3 BHK high-rise apartments with world-class amenities.',
-                'amenities' => ['Clubhouse', 'Swimming Pool', 'Gym', '24/7 Security', 'Tennis Court', 'EV Charging'],
-            ],
-            [
-                'name' => 'Brigade Utopia',
-                'code' => 'PRJ-UTOP',
-                'type' => 'residential',
-                'status' => 'under_construction',
-                'location' => 'Varthur',
-                'city' => 'Bangalore',
-                'developer' => 'Brigade Group',
-                'budget' => 600000000.00,
-                'total_units' => 400,
-                'available_units' => 120,
-                'sold_units' => 280,
-                'price_min' => 5500000.00,
-                'price_max' => 12000000.00,
-                'launch_date' => '2024-06-01',
-                'possession_date' => '2027-06-30',
-                'description' => 'Integrated smart township featuring serene landscapes and modern architecture.',
-                'amenities' => ['Shopping Complex', 'Sports Arena', 'Park', 'Co-working Space'],
-            ],
-            [
-                'name' => 'Sobha Dream Acres',
-                'code' => 'PRJ-SOBH',
-                'type' => 'residential',
-                'status' => 'completed',
-                'location' => 'Panathur',
-                'city' => 'Bangalore',
-                'developer' => 'Sobha Developers',
-                'budget' => 350000000.00,
-                'total_units' => 300,
-                'available_units' => 15,
-                'sold_units' => 285,
-                'price_min' => 6500000.00,
-                'price_max' => 11000000.00,
-                'launch_date' => '2022-03-10',
-                'possession_date' => '2025-05-01',
-                'description' => 'Premium ready-to-move-in residential community with German precast technology.',
-                'amenities' => ['Squash Court', 'Clubhouse', 'Amphitheatre', 'Pet Park'],
-            ],
-            [
-                'name' => 'DLF Camellias',
-                'code' => 'PRJ-DLFC',
-                'type' => 'commercial',
-                'status' => 'active',
-                'location' => 'Golf Course Road',
-                'city' => 'Gurgaon',
-                'developer' => 'DLF Limited',
-                'budget' => 1200000000.00,
-                'total_units' => 150,
-                'available_units' => 30,
-                'sold_units' => 120,
-                'price_min' => 25000000.00,
-                'price_max' => 85000000.00,
-                'launch_date' => '2023-09-20',
-                'possession_date' => '2026-09-01',
-                'description' => 'Ultra-luxury commercial towers and executive suites overlooking the golf course.',
-                'amenities' => ['Helipad', 'Concierge Service', 'Cigar Lounge', 'Infinity Pool'],
-            ],
-            [
-                'name' => 'Godrej Reserve',
-                'code' => 'PRJ-GODR',
-                'type' => 'mixed_use',
-                'status' => 'planning',
-                'location' => 'Devanahalli',
-                'city' => 'Bangalore',
-                'developer' => 'Godrej Properties',
-                'budget' => 800000000.00,
-                'total_units' => 500,
-                'available_units' => 500,
-                'sold_units' => 0,
-                'price_min' => 4000000.00,
-                'price_max' => 9000000.00,
-                'launch_date' => '2026-10-01',
-                'possession_date' => '2029-12-31',
-                'description' => 'Future-forward eco-friendly plotted development near International Airport.',
-                'amenities' => ['Organic Farm', 'Solar Lighting', 'Forest Trails', 'Clubhouse'],
-            ],
-        ];
-
-        foreach ($projectSeeds as $pData) {
-            Project::firstOrCreate(
-                ['code' => $pData['code']],
-                array_merge($pData, ['created_by' => $admin?->id])
-            );
-        }
-
-        // ── Seed HR Employees ──────────────────────────────────────────────
-        $empHRSeeds = [
-            [
-                'employee_code' => 'EMP-101',
-                'first_name' => 'Arjun',
-                'last_name' => 'Rathore',
-                'email' => 'arjun.rathore@propcrm.in',
-                'phone' => '9876543210',
-                'department' => 'Sales',
-                'designation' => 'Senior Real Estate Advisor',
-                'employment_type' => 'full_time',
-                'status' => 'active',
-                'joining_date' => '2023-01-15',
-                'salary' => 75000.00,
-                'user_id' => $employees[0]->id ?? null,
-            ],
-            [
-                'employee_code' => 'EMP-102',
-                'first_name' => 'Sneha',
-                'last_name' => 'Kapoor',
-                'email' => 'sneha.kapoor@propcrm.in',
-                'phone' => '9123456789',
-                'department' => 'Sales',
-                'designation' => 'Sales Lead',
-                'employment_type' => 'full_time',
-                'status' => 'active',
-                'joining_date' => '2022-08-01',
-                'salary' => 95000.00,
-                'user_id' => $employees[1]->id ?? null,
-            ],
-            [
-                'employee_code' => 'EMP-103',
-                'first_name' => 'Dev',
-                'last_name' => 'Malhotra',
-                'email' => 'dev.malhotra@propcrm.in',
-                'phone' => '9345678901',
-                'department' => 'Marketing',
-                'designation' => 'Digital Marketing Lead',
-                'employment_type' => 'full_time',
-                'status' => 'active',
-                'joining_date' => '2023-05-10',
-                'salary' => 80000.00,
-                'user_id' => $employees[2]->id ?? null,
-            ],
-            [
-                'employee_code' => 'EMP-104',
-                'first_name' => 'Priti',
-                'last_name' => 'Saxena',
-                'email' => 'priti.saxena@propcrm.in',
-                'phone' => '9234567890',
-                'department' => 'HR',
-                'designation' => 'HR Manager',
-                'employment_type' => 'full_time',
-                'status' => 'active',
-                'joining_date' => '2021-11-20',
-                'salary' => 90000.00,
-                'user_id' => $employees[3]->id ?? null,
-            ],
-            [
-                'employee_code' => 'EMP-105',
-                'first_name' => 'Ravi',
-                'last_name' => 'Shankar',
-                'email' => 'ravi.shankar@propcrm.in',
-                'phone' => '9456789012',
-                'department' => 'Operations',
-                'designation' => 'Operations Officer',
-                'employment_type' => 'full_time',
-                'status' => 'on_leave',
-                'joining_date' => '2024-02-01',
-                'salary' => 60000.00,
-                'user_id' => $employees[4]->id ?? null,
-            ],
-            [
-                'employee_code' => 'EMP-106',
-                'first_name' => 'Ananya',
-                'last_name' => 'Sharma',
-                'email' => 'ananya.sharma@propcrm.in',
-                'phone' => '9567890123',
-                'department' => 'Finance',
-                'designation' => 'Senior Accountant',
-                'employment_type' => 'full_time',
-                'status' => 'active',
-                'joining_date' => '2022-03-01',
-                'salary' => 85000.00,
-            ],
-            [
-                'employee_code' => 'EMP-107',
-                'first_name' => 'Rajesh',
-                'last_name' => 'Varma',
-                'email' => 'rajesh.varma@propcrm.in',
-                'phone' => '9678901234',
-                'department' => 'Construction',
-                'designation' => 'Site Architect',
-                'employment_type' => 'contract',
-                'status' => 'active',
-                'joining_date' => '2023-09-15',
-                'salary' => 110000.00,
-            ],
-        ];
-
-        foreach ($empHRSeeds as $eData) {
-            $emp = Employee::firstOrCreate(
-                ['employee_code' => $eData['employee_code']],
-                $eData
-            );
-
+        // ── 6. Seed Employee HR Records (Attendances, Leaves, Payrolls) ────
+        $allEmployees = Employee::all();
+        foreach ($allEmployees as $emp) {
             // Seed Attendances for past 5 working days
             for ($i = 0; $i < 5; $i++) {
                 $attDate = \Carbon\Carbon::now()->subDays($i)->format('Y-m-d');
@@ -534,10 +530,10 @@ class CrmDataSeeder extends Seeder
             );
         }
 
-        // Link Leads to Projects
-        $createdProjects = \App\Models\Project::all();
+        // ── 7. Link Leads to Projects ──────────────────────────────────────
+        $createdProjects = Project::all();
         if ($createdProjects->count() > 0) {
-            $leadsList = \App\Models\Lead::all();
+            $leadsList = Lead::all();
             foreach ($leadsList as $index => $ld) {
                 $proj = $createdProjects[$index % $createdProjects->count()];
                 $ld->update([
@@ -545,7 +541,6 @@ class CrmDataSeeder extends Seeder
                     'project_interest' => $proj->name,
                 ]);
 
-                // Also update SiteVisits for this lead
                 \App\Models\SiteVisit::where('lead_id', $ld->id)->update([
                     'project_id' => $proj->id,
                 ]);
