@@ -122,7 +122,7 @@ class CrmDataSeeder extends Seeder
                 $email = trim($data['P. Email'] ?? '');
             }
             if (empty($email)) {
-                $email = strtolower(str_replace(' ', '.', $fullName)) . '@brickroots.com';
+                $email = strtolower(str_replace(' ', '.', $fullName)) . '@company.com';
             }
 
             // Clean phone
@@ -142,7 +142,7 @@ class CrmDataSeeder extends Seeder
             $counter = 1;
             while (in_array(strtolower($email), $usedEmails)) {
                 $emailParts = explode('@', $baseEmail);
-                $email = $emailParts[0] . '+' . $counter . '@' . ($emailParts[1] ?? 'brickroots.com');
+                $email = $emailParts[0] . '+' . $counter . '@' . ($emailParts[1] ?? 'company.com');
                 $counter++;
             }
             $usedEmails[] = strtolower($email);
@@ -299,9 +299,9 @@ class CrmDataSeeder extends Seeder
                     'type' => $type,
                     'status' => $status,
                     'location' => trim($pData['Location'] ?? ''),
-                    'city' => trim($pData['City'] ?? 'Ahmedabad'),
-                    'state' => trim($pData['State'] ?? 'Gujarat'),
-                    'developer' => 'Brickroots Network',
+                    'city' => trim($pData['City'] ?? 'Metropolis'),
+                    'state' => trim($pData['State'] ?? 'State Region'),
+                    'developer' => 'Apex Group',
                     'rera_number' => trim($pData['RERA Number'] ?? ''),
                     'budget' => 0.0,
                     'total_units' => 100,
